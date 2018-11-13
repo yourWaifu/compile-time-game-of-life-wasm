@@ -64,26 +64,35 @@
 		var _memory;
 		var _memory_pointer;
 		var instance;
-		var _updateStates;
+		var _updateStates = null;
+
+		function setWASMExports(result) {
+			if (_updateStates !== null) return;
+
+			console.log(result);
+			console.log(result.instance.exports);
+			console.log(result.instance.exports._memory);
+			instance = result.instance; //not sure if this is a reference but I hope it is
+			_memory_pointer = instance.exports._getMemory();
+			_memory = new Uint8Array(importObject.env.memory.buffer, _memory_pointer, broadSize);
+			_updateStates = result.instance.exports._updateStates;
+
+			console.log("WASM boilerplate code execution finished");
+
+			draw();
+
+			console.log("Ready");
+		}
 
 		//Load Webassembly
 		WebAssembly.instantiateStreaming(fetch('main.wasm'), importObject)
-			.then(result => {
-				console.log(result);
-				console.log(result.instance.exports);
-				console.log(result.instance.exports._memory);
-				instance = result.instance; //not sure if this is a reference but I hope it is
-				_memory_pointer = instance.exports._getMemory();
-				_memory = new Uint8Array(importObject.env.memory.buffer, _memory_pointer, broadSize);
-				_updateStates = result.instance.exports._updateStates;
-
-				console.log("WASM boilerplate code execution finished");
-
-				draw();
-
-				console.log("Ready");
-			}
-			);
+			.catch(error => {
+				fetch('main.wasm').then(response =>
+					response.arrayBuffer()
+				).then(bytes =>
+					WebAssembly.instantiate(bytes, importObject)
+				).then(results => setWASMExports(results));
+			}).then(result => setWASMExports(result));
 
 		function draw() {
 			let startTimestamp = performance.now();
