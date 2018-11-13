@@ -259,3 +259,10 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+/game-of-life-wasm/main.o
+/game-of-life-wasm/main.wast
+/game-of-life-wasm/main.wasm.symbols
+/game-of-life-wasm/main.js.symbols
+/game-of-life-wasm/main.wasm
+/game-of-life-wasm/main.js
+/game-of-life-wasm/main.wasm.map

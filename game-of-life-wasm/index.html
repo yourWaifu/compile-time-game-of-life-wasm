@@ -1,0 +1,161 @@
+﻿<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+	<meta charset="UTF-8">
+</head>
+
+<body>
+	<!---<script src="main.js"></script>-->
+	<script type='text/javascript'>
+		console.log("test");
+		//global variables
+		const broadHeight = 50;
+		const broadWidth = 50;
+		const broadSize = broadHeight * broadWidth;
+		var eventLoopTimer = null;
+		let prevFrameTimestamp = performance.now();
+
+		//WASM imports
+		var importObject = {
+			env: {
+				memory: 0,
+				table: 0
+			}
+		};
+		importObject.env.memory = new WebAssembly.Memory({ initial: broadSize });
+		var memory = importObject.env.memory;
+		importObject.env.table = new WebAssembly.Table({ initial: 0, element: 'anyfunc' });
+		importObject.env.__linear_memory = new WebAssembly.Memory({ initial: broadSize });
+		importObject.env.__indirect_function_table = new WebAssembly.Table({ initial: 2, element: "anyfunc" });
+		importObject.env.__stack_pointer = new WebAssembly.Global({ value: 'i32', mutable: true }, 0);
+		importObject.env.memset = function (pointer, value, number) {
+			let mem = new Uint8Array(memory.buffer, pointer, number);
+			for (let i = 0; i < number; i++) {
+				mem[i] = value;
+			}
+		};
+		importObject.env.memcpy = function (destination, source, number) {
+			let destMem = new Uint8Array(memory.buffer, destination, number);
+			let sourceMem = new Uint8Array(memory.buffer, source, number);
+			for (let i = 0; i < number; i++) {
+				destMem[i] = sourceMem[i];
+			}
+			//for (let i = 0; i < number; i++) {
+			//	memory[destination + i] = memory[source + i];
+			//}
+		};
+		importObject.env.abortStackOverflow = function (size) {
+			//alert("ERROR: Stack Overflow. Tried to allocate " + size + " bytes onto the stack");
+		};
+		importObject.env.nullFunc_X = function () { };
+		importObject.env._emscripten_set_main_loop = function (func, fps, useInfiniteLoopSim) {
+			//we don't even use this function
+		};
+		importObject.env._memset = importObject.env.memset;
+		importObject.env._memcpy = importObject.env.memcpy;
+		importObject.env._printf = function (pointer) {
+			//we also don't use this
+		};
+		importObject.env.__memory_base = 0;
+		importObject.env.__table_base = 0;
+
+		//Define WASM exports
+		var _memory;
+		var _memory_pointer;
+		var instance;
+		var _updateStates;
+
+		//Load Webassembly
+		WebAssembly.instantiateStreaming(fetch('main.wasm'), importObject)
+			.then(result => {
+				console.log(result);
+				console.log(result.instance.exports);
+				console.log(result.instance.exports._memory);
+				instance = result.instance; //not sure if this is a reference but I hope it is
+				_memory_pointer = instance.exports._getMemory();
+				_memory = new Uint8Array(importObject.env.memory.buffer, _memory_pointer, broadSize);
+				_updateStates = result.instance.exports._updateStates;
+
+				console.log("WASM boilerplate code execution finished");
+
+				draw();
+
+				console.log("Ready");
+			}
+			);
+
+		function draw() {
+			let startTimestamp = performance.now();
+
+			//draw
+			let output = document.getElementById("output");
+			let toPrint = "";
+
+			for (let i = 0; i < broadSize; i++) {
+				if (i % broadWidth === 0) toPrint += "<br>";
+				toPrint += _memory[i] === 1 ? "&#x25a0;" : "&#x25a1;";
+			}
+
+			output.innerHTML = toPrint;
+
+			//display Potential Frametime
+			let frameTimeCounter = document.getElementById("drawtimeCounter");
+			let currentFrameTimestamp = performance.now();
+			frameTimeCounter.innerHTML = currentFrameTimestamp - startTimestamp;
+		}
+
+		function update() {
+			let startUpdateTimestamp = performance.now();
+			_updateStates();
+			let endUpdateTimestamp = performance.now();
+			draw();
+
+			//display frametime
+			let frameTimeCounter = document.getElementById("frametimeCounter");
+			let currentFrameTimestamp = performance.now();
+			let frametime = currentFrameTimestamp - prevFrameTimestamp;
+			frameTimeCounter.innerHTML = frametime;
+			prevFrameTimestamp = currentFrameTimestamp;
+
+			let updateTimeCounter = document.getElementById("updatetimeCounter");
+			updateTimeCounter.innerHTML = endUpdateTimestamp - startUpdateTimestamp;
+
+			let framerateCounter = document.getElementById("framerateCounter");
+			framerateCounter.innerHTML = 1000 / frametime;
+		}
+
+		function playOrPause() {
+			let PlayButton = document.getElementById("playButton");
+			let StepButton = document.getElementById("stepButton");
+			let framerate = document.getElementById("targetFramerate");
+			if (eventLoopTimer !== null) {
+				clearTimeout(eventLoopTimer);
+				PlayButton.textContent = "Play";
+				StepButton.disabled = false;
+				framerate.disabled = false;
+				eventLoopTimer = null;
+			} else {
+				eventLoopTimer = setInterval(() => {
+					update();
+				}, 1000 / framerate.value);
+				PlayButton.textContent = "Pause";
+				StepButton.disabled = true;
+				framerate.disabled = true;
+			}
+		}
+	</script>
+	<h1>BOI's Game of Life</h1>
+	<p style="line-height: .6em;" id="output"></p>
+	<br>
+	<button id="playButton" onclick="playOrPause()">Play</button>
+	<button id="stepButton" onclick="update()">Step</button>
+	<p>
+		Target Framerate: <input id="targetFramerate" type="number" min="0" value="60"><br />
+		Current Framerate: <span id="framerateCounter">0</span><br />
+		Frametime: <span id="frametimeCounter">0</span> milliseconds<br />
+		Drawtime: <span id="drawtimeCounter">0</span> milliseconds<br />
+		Updatetime: <span id="updatetimeCounter">0</span> milliseconds<br />
+	</p>
+</body>
+</html>
