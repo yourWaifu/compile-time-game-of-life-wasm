@@ -13,6 +13,7 @@
 		const broadHeight = 50;
 		const broadWidth = 50;
 		const broadSize = broadHeight * broadWidth;
+		let squareSize = 20;
 		var eventLoopTimer = null;
 		let prevFrameTimestamp = performance.now();
 
@@ -98,15 +99,43 @@
 			let startTimestamp = performance.now();
 
 			//draw
-			let output = document.getElementById("output");
-			let toPrint = "";
+			let outputElement;
+			if (eventLoopTimer) {
+				//This is much faster and gives much better image quality when in motion
+				document.getElementById("canvasOutput").hidden = true;
+				outputElement = document.getElementById("output");
+				let toPrint = "";
 
-			for (let i = 0; i < broadSize; i++) {
-				if (i % broadWidth === 0) toPrint += "<br>";
-				toPrint += _memory[i] === 1 ? "&#x25a0;" : "&#x25a1;";
+				for (let i = 0; i < broadSize; i++) {
+					if (i % broadWidth === 0) toPrint += "<br>";
+					toPrint += _memory[i] === 1 ? "&#x25a0;" : "&#x25a1;";
+				}
+
+				outputElement.innerHTML = toPrint;
+			} else {
+				document.getElementById("output").hidden = true;
+				outputElement = document.getElementById("canvasOutput");
+				let output = outputElement.getContext("2d");
+				output.fillStyle = "black";
+
+				let outputWidth = broadWidth * squareSize;
+				let outputHeight = broadHeight * squareSize;
+				//outputElement.width = outputWidth;
+				//outputElement.height = outputHeight;
+				let i = 0;
+				for (let y = 0; i < broadSize; y += squareSize) {
+					for (let x = 0; x < outputWidth; x += squareSize) {
+						if (_memory[i] == 1) {
+							output.fillRect(x, y, squareSize, squareSize);
+						} else {
+							output.clearRect(x,y, squareSize, squareSize);
+							output.strokeRect(x, y, squareSize, squareSize);
+						}
+						++i;
+					}
+				}
 			}
-
-			output.innerHTML = toPrint;
+			outputElement.hidden = false;
 
 			//display Potential Frametime
 			let frameTimeCounter = document.getElementById("drawtimeCounter");
@@ -137,13 +166,16 @@
 		function playOrPause() {
 			let PlayButton = document.getElementById("playButton");
 			let StepButton = document.getElementById("stepButton");
+			let clearButton = document.getElementById("clearButton");
 			let framerate = document.getElementById("targetFramerate");
 			if (eventLoopTimer !== null) {
 				clearTimeout(eventLoopTimer);
 				PlayButton.textContent = "Play";
 				StepButton.disabled = false;
 				framerate.disabled = false;
+				clearButton.disabled = false;
 				eventLoopTimer = null;
+				draw();
 			} else {
 				eventLoopTimer = setInterval(() => {
 					update();
@@ -151,14 +183,38 @@
 				PlayButton.textContent = "Pause";
 				StepButton.disabled = true;
 				framerate.disabled = true;
+				clearButton.disabled = true;
 			}
+		}
+
+		function onCanvasClick(event) {
+			//get mouse on canvas
+			let canvas = document.getElementById("canvasOutput");
+			let rect = canvas.getBoundingClientRect();
+			
+			let x = event.clientX - rect.left;
+			let y = event.clientY - rect.top;
+
+			let index = Math.floor((x * 2)/ squareSize) + ((Math.floor((y * 2)/ squareSize) * broadWidth));
+
+			_memory[index] = _memory[index] === 1 ? 0 : 1;
+			draw();
+		}
+
+		function clearMem() {
+			for (let i = 0; i < broadSize; i++) {
+				_memory[i] = 0;
+			}
+			draw();
 		}
 	</script>
 	<h1>BOI's Game of Life</h1>
 	<p style="line-height: .6em;" id="output"></p>
+	<canvas id="canvasOutput" width="1000" height="1000" style="width:500px; height:500px;" onmousedown="onCanvasClick(event)"></canvas>
 	<br>
 	<button id="playButton" onclick="playOrPause()">Play</button>
 	<button id="stepButton" onclick="update()">Step</button>
+	<button id="clearButton" onclick="clearMem()">Clear</button>
 	<p>
 		Target Framerate: <input id="targetFramerate" type="number" min="0" value="60"><br />
 		Current Framerate: <span id="framerateCounter">0</span><br />
