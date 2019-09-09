@@ -43,7 +43,11 @@
 #*.jpg   binary
 #*.png   binary
 #*.gif   binary
-main.*   binary
+main.*   linguist-vendored
+*.wasm   linguist-vendored
+*.wast   linguist-vendored
+*.wasm.symbols linguist-vendored
+*.wasm.map linguist-vendored
 
 ###############################################################################
 # diff behavior for common document formats
