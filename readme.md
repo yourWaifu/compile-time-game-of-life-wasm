@@ -61,4 +61,4 @@ Safari | 11 | 2.17% | 9.43%
 IOS Safari | 11 | 9.4% | 11.93%
 Chrome for Android | 69 | 31.99% | 27.9%??
 
-Sources: https://caniuse.com/#feat=wasm http://gs.statcounter.com/
+Sources: https://caniuse.com/#feat=wasm https://web.archive.org/web/20190907034434/https://gs.statcounter.com/
