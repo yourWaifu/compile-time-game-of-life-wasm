@@ -18,15 +18,19 @@
 		let prevFrameTimestamp = performance.now();
 
 		//WASM imports
+		const memory = new WebAssembly.Memory({initial: 256, maximum: 256});
 		var importObject = {
 			env: {
-				memory: 0,
+				memory: memory,
 				table: 0
 			}
 		};
-		importObject.env.memory = new WebAssembly.Memory({ initial: broadSize });
-		var memory = importObject.env.memory;
-		importObject.env.table = new WebAssembly.Table({ initial: 0, element: 'anyfunc' });
+		importObject.env.memory = memory;
+		importObject.env.memoryBase = 1024;
+		importObject.env.table = new WebAssembly.Table({initial: 0, maximum: 0, element: 'anyfunc'});
+		importObject.env.tableBase = 0;
+		importObject.env.STACKTOP = 0;
+		importObject.env.STACK_MAX = memory.buffer.byteLength;
 		importObject.env.__linear_memory = new WebAssembly.Memory({ initial: broadSize });
 		importObject.env.__indirect_function_table = new WebAssembly.Table({ initial: 2, element: "anyfunc" });
 		importObject.env.__stack_pointer = new WebAssembly.Global({ value: 'i32', mutable: true }, 0);
@@ -43,8 +47,7 @@
 				destMem[i] = sourceMem[i];
 			}
 		};
-		importObject.env.abortStackOverflow = function (size) {
-		};
+		importObject.env.abortStackOverflow = function (size) { throw new Error('overflow'); }
 		importObject.env.nullFunc_X = function () { };
 		importObject.env._emscripten_set_main_loop = function (func, fps, useInfiniteLoopSim) {
 			//we don't even use this function
