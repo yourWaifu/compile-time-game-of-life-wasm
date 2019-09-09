@@ -1,8 +1,3 @@
-#ifdef f__EMSCRIPTEN__
-#include <emscripten.h>
-#include <iostream>
-#include <stdio.h>
-#endif
 using SizeType = decltype(sizeof(void*));
 
 //The min maxNumOfNeighbours is 3 or 4
@@ -168,42 +163,6 @@ struct Blicker {
 	);
 };
 
-#ifdef f__EMSCRIPTEN__
-LifeGame<> globalGame;
-LifeGame<>::States globalStates;
-
-void updateGlobalStates() {
-	globalGame.update(globalStates);
-	char output[sizeof(LifeGame<>::States)];
-	printf("\033[0;0H");
-	for (int i = 0; i < sizeof(LifeGame<>::States); ++i) {
-		output[i] = (globalStates[i] ? '1' : '0');
-	}
-	printf("%s\n", output);
-}
-#endif
-
-/*
-int main() {
-#ifdef f__EMSCRIPTEN__
-	for (int i = 0; i < sizeof(LifeGame<>::States); ++i) {
-		globalStates[i] = 50 * 25 < i && i < 50 * 26;
-	}
-
-	emscripten_set_main_loop(updateGlobalStates, 144, 1);
-#else
-	LifeGame<> game;
-	LifeGame<>::States states;
-
-	while (true) {
-		game.update(states);
-	}
-#endif
-
-	return 0;
-}
-*/
-
 //Code for WASM
 using LifeGame85050 = LifeGame<>;
 LifeGame85050::States memory;
@@ -212,10 +171,6 @@ extern "C" void memcpy(void*, void*, SizeType);
 bool boolToCopy[50];
 
 extern "C" bool* getMemory() {
-	//for (int i = 0; i < 50; ++i) {
-	//	boolToCopy[i] = 1;
-	//}
-	//memcpy(&memory.operator[](50 * 25), boolToCopy, sizeof(boolToCopy));
 	for (int i = 50 * 25; i < 50 * 26; ++i) {
 		memory.values[i] = 1;
 	}
@@ -223,6 +178,5 @@ extern "C" bool* getMemory() {
 }
 
 extern "C" void updateStates() {
-	//memcpy(&memory.operator[](50 * 25), boolToCopy, 50);
 	LifeGame<>::update(memory);
 }
